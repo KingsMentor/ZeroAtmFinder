@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.location.Location
+import android.net.Uri
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.DividerItemDecoration
@@ -94,7 +95,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, EasyPermissions.Pe
             deviceLocationQuery()
         }
         atmAdapter = AtmAdapter(mutableListOf()){
-
+            val intent = Intent(
+                android.content.Intent.ACTION_VIEW,
+                Uri.parse("geo:0,0?q=${it.geometry.location.lat},${it.geometry.location.lng}"))
+            startActivity(intent)
         }
 
         atm_recycler.adapter = atmAdapter
