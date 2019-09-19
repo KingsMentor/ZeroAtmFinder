@@ -6,6 +6,9 @@ import android.content.Intent
 import android.location.Location
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.DividerItemDecoration
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.gdsahub.trainer.exts.observe
 import com.gdsahub.trainer.exts.withViewModel
 import com.google.android.gms.location.LocationServices
@@ -21,9 +24,11 @@ import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.widget.Autocomplete
 import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
 import kotlinx.android.synthetic.main.activity_maps.*
+import kotlinx.android.synthetic.main.atm_details_bottom_sheet.*
 import pub.devrel.easypermissions.EasyPermissions
 import xyz.belvi.domain.states.DataStates
 import xyz.belvi.domain.states.resultSuccessful
+import xyz.belvi.zerofinder.adapter.AtmAdapter
 import xyz.belvi.zerofinder.vm.MainVM
 import xyz.belvi.zerofinder.vm.MainVMFactory
 import java.util.*
@@ -32,6 +37,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, EasyPermissions.Pe
     val RC_LOCATION = 1
     private lateinit var mMap: GoogleMap
     private lateinit var mainVM: MainVM
+    lateinit var atmAdapter: AtmAdapter
 
     private fun deviceLocationQuery() {
         LocationServices.getFusedLocationProviderClient(this).lastLocation.addOnSuccessListener {
@@ -87,7 +93,18 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, EasyPermissions.Pe
         location_btn.setOnClickListener {
             deviceLocationQuery()
         }
+        atmAdapter = AtmAdapter(mutableListOf()){
 
+        }
+
+        atm_recycler.adapter = atmAdapter
+        atm_recycler.layoutManager = LinearLayoutManager(this,RecyclerView.VERTICAL,false)
+        atm_recycler.addItemDecoration(
+            DividerItemDecoration(
+                this,
+                DividerItemDecoration.VERTICAL
+            )
+        )
     }
 
 
@@ -117,6 +134,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, EasyPermissions.Pe
     private fun showResult(dataStates: DataStates?) {
         dataStates?.let {
             if (it is resultSuccessful) {
+                atmAdapter.refreshList(it.results)
                 mMap.clear()
                 it.results.forEach {
                     addMarker(it.geometry.location.lat, it.geometry.location.lng)
