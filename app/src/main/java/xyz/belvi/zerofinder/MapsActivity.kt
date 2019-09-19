@@ -1,5 +1,9 @@
 package xyz.belvi.zerofinder
 
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.location.Location
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.gdsahub.trainer.exts.observe
@@ -9,29 +13,30 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.widget.Autocomplete
+import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
+import kotlinx.android.synthetic.main.activity_maps.*
 import pub.devrel.easypermissions.EasyPermissions
 import xyz.belvi.domain.states.DataStates
 import xyz.belvi.domain.states.resultSuccessful
 import xyz.belvi.zerofinder.vm.MainVM
 import xyz.belvi.zerofinder.vm.MainVMFactory
+import java.util.*
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, EasyPermissions.PermissionCallbacks {
     val RC_LOCATION = 1
-    override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {
+    private lateinit var mMap: GoogleMap
+    private lateinit var mainVM: MainVM
 
-    }
-
-    override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
-        val mapFragment = supportFragmentManager
-            .findFragmentById(R.id.map) as SupportMapFragment
-        mapFragment.getMapAsync(this)
-
-        mainVM = withViewModel(MainVMFactory) {
-            observe(searchResults, ::showResult)
+    private fun deviceLocationQuery() {
+        LocationServices.getFusedLocationProviderClient(this).lastLocation.addOnSuccessListener {
+            mainVM.nearByATM(it.latitude, it.longitude)
+            moveCamToLocation(it.latitude, it.longitude)
         }
     }
 
@@ -44,8 +49,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, EasyPermissions.Pe
 
     }
 
-    private lateinit var mMap: GoogleMap
-    private lateinit var mainVM: MainVM
 
     private fun moveCamToLocation(lat: Double, lng: Double) {
         val center =
@@ -54,6 +57,39 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, EasyPermissions.Pe
         mMap.moveCamera(center)
         mMap.animateCamera(zoom)
     }
+
+
+    override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {
+
+    }
+
+    override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
+        val mapFragment = supportFragmentManager
+            .findFragmentById(R.id.map) as SupportMapFragment
+        mapFragment.getMapAsync(this)
+
+        mainVM = withViewModel(MainVMFactory) {
+            observe(searchResults, ::showResult)
+        }
+
+        search_field.setOnClickListener {
+            Places.initialize(this, getString(R.string.google_maps_key), Locale.US)
+
+            val fields = Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.LAT_LNG, Place.Field.ADDRESS)
+
+            val intent = Autocomplete.IntentBuilder(
+                AutocompleteActivityMode.FULLSCREEN, fields
+            )
+                .build(this)
+            startActivityForResult(intent, requestCode)
+        }
+
+        location_btn.setOnClickListener {
+            deviceLocationQuery()
+        }
+
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,22 +104,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, EasyPermissions.Pe
 
     }
 
-    /**
-     * Manipulates the map once available.
-     * This callback is triggered when the map is ready to be used.
-     * This is where we can add markers or lines, add listeners or move the camera. In this case,
-     * we just add a marker near Sydney, Australia.
-     * If Google Play services is not installed on the device, the user will be prompted to install
-     * it inside the SupportMapFragment. This method will only be triggered once the user has
-     * installed Google Play services and returned to the app.
-     */
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
-        LocationServices.getFusedLocationProviderClient(this).lastLocation.addOnSuccessListener {
-            mainVM.nearByATM(it.latitude, it.longitude)
-            mMap.isMyLocationEnabled = true
-            moveCamToLocation(it.latitude, it.longitude)
-        }
+        deviceLocationQuery()
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -99,6 +122,23 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, EasyPermissions.Pe
                     addMarker(it.geometry.location.lat, it.geometry.location.lng)
                 }
             }
+        }
+    }
+
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode == Activity.RESULT_OK) {
+            data?.let {
+                val place = Autocomplete.getPlaceFromIntent(data)
+                place.latLng?.let {
+                    mainVM.nearByATM(it.latitude, it.longitude)
+                    moveCamToLocation(it.latitude, it.longitude)
+                }
+
+            }
+
+
         }
     }
 }
