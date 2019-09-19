@@ -1,0 +1,44 @@
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-kapt'
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "org.jetbrains.kotlin:kotlin-android-extensions:$kotlin_version"
+    }
+}
+
+
+android {
+    compileSdkVersion SDKVersions.compile_sdk
+    defaultConfig {
+        minSdkVersion SDKVersions.min_sdk
+        targetSdkVersion SDKVersions.target_sdk
+        versionCode Releases.version_code
+        versionName Releases.version_name
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+}
+dependencies {
+
+    api Deps.rx_android
+    implementation Deps.retrofit
+    implementation Deps.retrofit_gson_converter
+    api Deps.retrofix_rxjava2
+
+
+    implementation Deps.kotlin_jdk
+    implementation Deps.kotlin_stdlib
+    implementation Deps.retrofit_http_logger
+}
