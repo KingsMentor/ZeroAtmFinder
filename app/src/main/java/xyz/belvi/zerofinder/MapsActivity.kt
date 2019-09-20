@@ -1,11 +1,10 @@
 package xyz.belvi.zerofinder
 
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
-import android.location.Location
 import android.net.Uri
 import android.os.Bundle
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -27,8 +26,10 @@ import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
 import kotlinx.android.synthetic.main.activity_maps.*
 import kotlinx.android.synthetic.main.atm_details_bottom_sheet.*
 import pub.devrel.easypermissions.EasyPermissions
+import xyz.belvi.domain.states.DataResponseError
 import xyz.belvi.domain.states.DataStates
 import xyz.belvi.domain.states.resultSuccessful
+import xyz.belvi.domain.states.searchFailed
 import xyz.belvi.zerofinder.adapter.AtmAdapter
 import xyz.belvi.zerofinder.vm.MainVM
 import xyz.belvi.zerofinder.vm.MainVMFactory
@@ -45,6 +46,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, EasyPermissions.Pe
             mainVM.nearByATM(it.latitude, it.longitude)
             moveCamToLocation(it.latitude, it.longitude)
         }
+    }
+
+    private fun displayMessage(message: String) {
+        AlertDialog.Builder(this)
+            .setMessage(message)
+            .show()
     }
 
     private fun addMarker(lat: Double, lng: Double) {
@@ -137,12 +144,16 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, EasyPermissions.Pe
 
     private fun showResult(dataStates: DataStates?) {
         dataStates?.let {
-            if (it is resultSuccessful) {
-                atmAdapter.refreshList(it.results)
-                mMap.clear()
-                it.results.forEach {
-                    addMarker(it.geometry.location.lat, it.geometry.location.lng)
+            when (it) {
+                is resultSuccessful -> {
+                    atmAdapter.refreshList(it.results)
+                    mMap.clear()
+                    it.results.forEach {
+                        addMarker(it.geometry.location.lat, it.geometry.location.lng)
+                    }
                 }
+                is searchFailed -> displayMessage(it.message)
+                is DataResponseError -> displayMessage(it.cause?.message?:"")
             }
         }
     }
